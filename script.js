@@ -647,6 +647,3 @@ document.getElementById('checkin-success').addEventListener('click', (e) => {
     }
 });
 
-navigator.geolocation.getCurrentPosition = () => {
-  return { coords: { latitude:31.3222, longitude:120.6292 } }
-}
