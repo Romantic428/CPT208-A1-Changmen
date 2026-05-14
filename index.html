@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>苏州阊门导览</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <!-- 首页 -->
+    <div id="home-page" class="page active">
+        <div class="header">
+            <h1>苏州阊门</h1>
+            <p class="subtitle">千年古城 · 繁华商埠</p>
+        </div>
+        <div class="hero-image">
+            <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20Changmen%20ancient%20city%20gate%20traditional%20Chinese%20architecture%20with%20blue%20tiles%20and%20white%20walls%20scenic%20spot&image_size=landscape_16_9" alt="阊门">
+        </div>
+        <div class="menu-grid">
+            <div class="menu-item" onclick="navigateTo('guide-page')">
+                <div class="menu-icon">🏛️</div>
+                <span>景点导览</span>
+            </div>
+            <div class="menu-item" onclick="navigateTo('quiz-page')">
+                <div class="menu-icon">📝</div>
+                <span>答题闯关</span>
+            </div>
+            <div class="menu-item" onclick="navigateTo('card-page')">
+                <div class="menu-icon">🎴</div>
+                <span>纪念卡片</span>
+            </div>
+            <div class="menu-item" onclick="goToARGuide()">
+                <div class="menu-icon">🕶️</div>
+                <span>AR导览</span>
+            </div>
+        </div>
+        
+        <div class="checkin-section">
+            <button class="checkin-btn" onclick="checkIn()">
+                <span class="checkin-icon">📍</span>
+                <span>现场打卡</span>
+            </button>
+            <div id="checkin-status" class="checkin-status">
+                <span id="checkin-message">点击按钮进行GPS打卡</span>
+            </div>
+        </div>
+        <div class="intro-text">
+            <p>阊门是苏州古城的西门，始建于春秋时期，是苏州城的重要门户。这里曾是明清时期最繁华的商业区，有"金阊门"之称。</p>
+        </div>
+    </div>
+
+    <!-- 景点导览页 -->
+    <div id="guide-page" class="page">
+        <div class="nav-header">
+            <button class="back-btn" onclick="navigateTo('home-page')">← 返回</button>
+            <h2>景点导览</h2>
+            <button id="voice-toggle" class="voice-btn" onclick="toggleVoiceGuide()">
+                <span id="voice-icon">🔊</span>
+                <span id="voice-text">语音解说</span>
+            </button>
+        </div>
+        <div class="guide-content">
+            <div class="guide-status-bar">
+                <div class="status-item">
+                    <span class="status-icon">📍</span>
+                    <span id="location-status">定位中...</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-icon">🎧</span>
+                    <span id="voice-status">语音: 开启</span>
+                </div>
+            </div>
+            <div class="spot-card" onclick="showSpotDetail(0)">
+                <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20Changmen%20city%20gate%20ancient%20Chinese%20architecture%20stone%20bridge%20canal&image_size=landscape_16_9" alt="阊门城楼">
+                <div class="spot-info">
+                    <h3>阊门城楼</h3>
+                    <p>始建于春秋时期，苏州古城标志性建筑</p>
+                </div>
+            </div>
+            <div class="spot-card" onclick="showSpotDetail(1)">
+                <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=traditional%20Chinese%20canal%20street%20Suzhou%20with%20boats%20and%20ancient%20buildings&image_size=landscape_16_9" alt="山塘街">
+                <div class="spot-info">
+                    <h3>山塘街</h3>
+                    <p>千年古街，被誉为"姑苏第一名街"</p>
+                </div>
+            </div>
+            <div class="spot-card" onclick="showSpotDetail(2)">
+                <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=traditional%20Chinese%20garden%20Suzhou%20with%20rockeries%20pavilion%20and%20pond&image_size=landscape_16_9" alt="留园">
+                <div class="spot-info">
+                    <h3>留园</h3>
+                    <p>中国四大名园之一，园林艺术典范</p>
+                </div>
+            </div>
+            <div class="spot-card" onclick="showSpotDetail(3)">
+                <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=ancient%20Chinese%20temple%20with%20pagoda%20Suzhou%20traditional%20architecture&image_size=landscape_16_9" alt="寒山寺">
+                <div class="spot-info">
+                    <h3>寒山寺</h3>
+                    <p>千年古刹，因《枫桥夜泊》闻名天下</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 景点详情弹窗 -->
+    <div id="spot-detail" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeSpotDetail()">✕</button>
+            <div id="detail-image">
+                <img src="" alt="">
+            </div>
+            <div id="detail-info">
+                <h3 id="detail-title"></h3>
+                <p id="detail-desc"></p>
+                <div id="detail-hours">
+                    <span>⏰ 开放时间：</span>
+                    <span id="detail-time"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 打卡成功弹窗 -->
+    <div id="checkin-success" class="modal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeCheckinModal()">✕</button>
+            <div class="checkin-success-header">
+                <div class="success-icon">✅</div>
+                <h3>打卡成功！</h3>
+            </div>
+            <div class="checkin-success-content">
+                <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20Changmen%20ancient%20city%20gate%20traditional%20Chinese%20architecture%20with%20blue%20tiles%20and%20white%20walls%20scenic%20spot&image_size=landscape_16_9" alt="阊门">
+                <div class="success-info">
+                    <h4>📍 苏州阊门</h4>
+                    <p>恭喜你成功打卡苏州阊门！</p>
+                    <p class="success-desc">阊门是苏州古城的西门，始建于春秋时期，是苏州城的重要门户。这里曾是明清时期最繁华的商业区，有"金阊门"之称。城楼气势恢宏，飞檐翘角，是苏州古城的标志性建筑之一。</p>
+                    <div class="success-stats">
+                        <span>📍 坐标：31.3222, 120.6292</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 答题闯关页 -->
+    <div id="quiz-page" class="page">
+        <div class="nav-header">
+            <button class="back-btn" onclick="navigateTo('home-page')">← 返回</button>
+            <h2>答题闯关</h2>
+        </div>
+        <div class="quiz-progress">
+            <div class="progress-bar">
+                <div id="progress-fill"></div>
+            </div>
+            <span id="quiz-count">1/5</span>
+        </div>
+        <div class="quiz-content">
+            <div id="question-text"></div>
+            <div class="options">
+                <button class="option-btn" onclick="selectOption(0)"><span class="option-label">A</span><span id="opt0"></span></button>
+                <button class="option-btn" onclick="selectOption(1)"><span class="option-label">B</span><span id="opt1"></span></button>
+                <button class="option-btn" onclick="selectOption(2)"><span class="option-label">C</span><span id="opt2"></span></button>
+                <button class="option-btn" onclick="selectOption(3)"><span class="option-label">D</span><span id="opt3"></span></button>
+            </div>
+        </div>
+        <div id="result-overlay" class="result-overlay">
+            <div class="result-card">
+                <div id="result-icon">🎉</div>
+                <h3 id="result-title"></h3>
+                <p id="result-text"></p>
+                <button class="result-btn" onclick="restartQuiz()">再玩一次</button>
+                <button class="result-btn secondary" onclick="navigateTo('home-page')">返回首页</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 纪念卡片页 -->
+    <div id="card-page" class="page">
+        <div class="nav-header">
+            <button class="back-btn" onclick="navigateTo('home-page')">← 返回</button>
+            <h2>纪念卡片</h2>
+        </div>
+        
+        <div class="card-input-section">
+            <input type="text" id="username-input" placeholder="请输入您的昵称" maxlength="10">
+        </div>
+        
+        <div class="card-container">
+            <div id="card-to-save" class="card-frame">
+                <div class="card-header">
+                    <img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20Changmen%20ancient%20city%20gate%20traditional%20Chinese%20painting%20style&image_size=landscape_16_9" alt="阊门">
+                    <div class="card-overlay">
+                        <span class="card-title-text">苏州阊门</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="card-username" id="card-username">游客</div>
+                    <h3>纪念打卡</h3>
+                    <p>千年古城 · 繁华商埠</p>
+                    <div class="card-score">
+                        <span class="score-label">🏆 答题得分：</span>
+                        <span id="card-score-value">0</span>
+                        <span class="score-unit">分</span>
+                    </div>
+                    <div class="card-date" id="card-date"></div>
+                </div>
+                <div class="card-footer">
+                    <span>畅游苏州 · 品味历史</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-actions">
+            <button class="action-btn" onclick="generateNewCard()">🎲 换一张</button>
+            <button class="action-btn primary" onclick="saveCardAsImage()">💾 保存图片</button>
+        </div>
+        
+        <div id="save-success" class="save-success-modal">
+            <div class="save-success-content">
+                <div class="success-icon-large">✅</div>
+                <h3>保存成功！</h3>
+                <p>图片已保存到相册</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="guide-notification" class="guide-notification">
+        <div class="notification-content">
+            <button class="close-btn" onclick="closeGuideNotification()">×</button>
+            <div class="notification-header">
+                <span class="notification-icon">📍</span>
+                <h3 id="notification-title">景点导览</h3>
+            </div>
+            <div id="notification-image">
+                <img src="" alt="景点图片">
+            </div>
+            <div class="notification-body">
+                <p id="notification-desc"></p>
+            </div>
+            <div class="notification-actions">
+                <button class="action-btn" onclick="closeGuideNotification()">知道了</button>
+                <button class="action-btn primary" onclick="navigateTo('guide-page'); closeGuideNotification();">查看详情</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

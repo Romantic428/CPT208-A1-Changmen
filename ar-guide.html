@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>苏州阊门 AR导览</title>
+    <!-- A-Frame核心库 -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <!-- AR.js库 -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+    <!-- 地理位置组件 -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-location.js"></script>
+    
+    <style>
+        /* 全局样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* 颜色变量 - 苏州园林风格 */
+        :root {
+            --primary: #2C5F5B;
+            --secondary: #4A7C59;
+            --gold: #C9A962;
+            --cream: #FAF8F5;
+            --light-cream: #F5F0E6;
+            --gray: #6B7280;
+        }
+        
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: var(--cream);
+            overflow: hidden;
+        }
+        
+        /* AR场景容器 */
+        #ar-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        /* 顶部导航栏 */
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, rgba(44, 95, 91, 0.9) 0%, rgba(74, 124, 89, 0.9) 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid rgba(201, 169, 98, 0.5);
+        }
+        
+        .top-bar h1 {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        .nav-btn {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-btn:hover, .nav-btn:active {
+            background: rgba(255,255,255,0.3);
+            transform: scale(0.95);
+        }
+        
+        /* 底部状态栏 */
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 15px 20px;
+            background: linear-gradient(180deg, transparent 0%, rgba(44, 95, 91, 0.95) 20%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            border-top: 2px solid rgba(201, 169, 98, 0.5);
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 0.85rem;
+        }
+        
+        .status-icon {
+            font-size: 1rem;
+        }
+        
+        /* 语音控制按钮 */
+        .voice-control {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .voice-btn {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .voice-btn.active {
+            background: linear-gradient(135deg, var(--gold) 0%, #D4AF37 100%);
+            color: white;
+        }
+        
+        .voice-btn.inactive {
+            background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%);
+            color: white;
+        }
+        
+        .voice-btn:hover, .voice-btn:active {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        
+        /* 景点介绍弹窗 */
+        .spot-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(180deg, #FAF8F5 0%, #F5F0E8 100%);
+            width: 90%;
+            max-width: 340px;
+            border-radius: 20px;
+            padding: 25px;
+            z-index: 200;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            border: 3px solid rgba(212, 196, 168, 0.8);
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        .spot-modal.active {
+            display: block;
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 150;
+        }
+        
+        .modal-overlay.active {
+            display: block;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(212, 196, 168, 0.5);
+        }
+        
+        .modal-title {
+            font-size: 1.3rem;
+            color: var(--primary);
+            font-weight: bold;
+        }
+        
+        .close-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0,0,0,0.1);
+            color: var(--gray);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .close-btn:hover, .close-btn:active {
+            background: rgba(0,0,0,0.2);
+            transform: scale(0.9);
+        }
+        
+        .modal-image {
+            width: 100%;
+            height: 150px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        .modal-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .modal-desc {
+            font-size: 0.95rem;
+            color: var(--gray);
+            line-height: 1.7;
+            margin-bottom: 20px;
+            text-align: justify;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .modal-btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border: 2px solid var(--primary);
+            background: white;
+            color: var(--primary);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .modal-btn.primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .modal-btn:hover, .modal-btn:active {
+            transform: scale(0.98);
+        }
+        
+        /* 距离显示 */
+        .distance-info {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(44, 95, 91, 0.9);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 15px;
+            z-index: 100;
+            min-width: 120px;
+            border: 2px solid rgba(201, 169, 98, 0.5);
+        }
+        
+        .distance-label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .distance-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--gold);
+        }
+        
+        /* 加载提示 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #FAF8F5 0%, #F5F0E8 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+        }
+        
+        .loading-icon {
+            font-size: 4rem;
+            animation: pulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+        }
+        
+        .loading-text {
+            font-size: 1.1rem;
+            color: var(--primary);
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载提示 -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-icon">🌍</div>
+        <div class="loading-text">正在初始化AR导览...</div>
+    </div>
+    
+    <!-- AR场景 -->
+    <div id="ar-container">
+        <a-scene 
+            vr-mode-ui="enabled: false"
+            arjs="trackingMethod: best; sourceType: webcam;"
+            location="gpsMinDistance: 10;"
+            renderer="logarithmicDepthBuffer: true;"
+        >
+            <!-- 摄像头背景 -->
+            <a-entity camera arjs="trackingMethod: best;"></a-entity>
+            
+            <!-- 天空盒 -->
+            <a-sky color="#87CEEB" opacity="0.3"></a-sky>
+            
+            <!-- 地面网格 -->
+            <a-grid 
+                rotation="-90 0 0" 
+                width="500" 
+                height="500" 
+                cellSize="10"
+                color="#2C5F5B"
+                opacity="0.3"
+            ></a-grid>
+            
+            <!-- 阊门城楼 -->
+            <a-entity 
+                gps-entity-place="latitude: 31.3222; longitude: 120.6292;"
+                id="spot-0"
+            >
+                <!-- 3D标记 -->
+                <a-torus 
+                    color="#C9A962" 
+                    radius="0.5" 
+                    tube="0.1" 
+                    rotation="90 0 0"
+                    animation="property: rotation; to: 90 360 0; loop: true; dur: 5000;"
+                ></a-torus>
+                <a-cone 
+                    color="#2C5F5B" 
+                    radius-bottom="0.3" 
+                    height="1"
+                    rotation="-90 0 0"
+                    position="0 0.5 0"
+                ></a-cone>
+                <a-text 
+                    value="阊门城楼" 
+                    color="#2C5F5B" 
+                    position="0 1.8 0"
+                    rotation="-90 0 0"
+                    scale="0.5 0.5 0.5"
+                    align="center"
+                ></a-text>
+            </a-entity>
+            
+            <!-- 阊门广场 -->
+            <a-entity 
+                gps-entity-place="latitude: 31.3230; longitude: 120.6285;"
+                id="spot-1"
+            >
+                <a-torus 
+                    color="#C9A962" 
+                    radius="0.5" 
+                    tube="0.1" 
+                    rotation="90 0 0"
+                    animation="property: rotation; to: 90 360 0; loop: true; dur: 5000;"
+                ></a-torus>
+                <a-cylinder 
+                    color="#4A7C59" 
+                    radius="0.3" 
+                    height="0.8"
+                    position="0 0.4 0"
+                ></a-cylinder>
+                <a-text 
+                    value="阊门广场" 
+                    color="#2C5F5B" 
+                    position="0 1.5 0"
+                    rotation="-90 0 0"
+                    scale="0.5 0.5 0.5"
+                    align="center"
+                ></a-text>
+            </a-entity>
+            
+            <!-- 运河码头 -->
+            <a-entity 
+                gps-entity-place="latitude: 31.3215; longitude: 120.6300;"
+                id="spot-2"
+            >
+                <a-torus 
+                    color="#C9A962" 
+                    radius="0.5" 
+                    tube="0.1" 
+                    rotation="90 0 0"
+                    animation="property: rotation; to: 90 360 0; loop: true; dur: 5000;"
+                ></a-torus>
+                <a-box 
+                    color="#6B9AC4" 
+                    width="0.6" 
+                    height="0.5" 
+                    depth="0.3"
+                    position="0 0.25 0"
+                ></a-box>
+                <a-text 
+                    value="运河码头" 
+                    color="#2C5F5B" 
+                    position="0 1.2 0"
+                    rotation="-90 0 0"
+                    scale="0.5 0.5 0.5"
+                    align="center"
+                ></a-text>
+            </a-entity>
+            
+            <!-- 古戏台遗址 -->
+            <a-entity 
+                gps-entity-place="latitude: 31.3218; longitude: 120.6280;"
+                id="spot-3"
+            >
+                <a-torus 
+                    color="#C9A962" 
+                    radius="0.5" 
+                    tube="0.1" 
+                    rotation="90 0 0"
+                    animation="property: rotation; to: 90 360 0; loop: true; dur: 5000;"
+                ></a-torus>
+                <a-pyramid 
+                    color="#8B7355" 
+                    width="0.8" 
+                    height="1"
+                    position="0 0.5 0"
+                ></a-pyramid>
+                <a-text 
+                    value="古戏台遗址" 
+                    color="#2C5F5B" 
+                    position="0 1.8 0"
+                    rotation="-90 0 0"
+                    scale="0.5 0.5 0.5"
+                    align="center"
+                ></a-text>
+            </a-entity>
+            
+            <!-- 导航箭头 -->
+            <a-entity id="nav-arrow">
+                <a-cone 
+                    color="#0066FF" 
+                    radius-bottom="0.2" 
+                    height="0.8"
+                    rotation="-90 0 0"
+                    opacity="0.8"
+                ></a-cone>
+                <a-cylinder 
+                    color="#0066FF" 
+                    radius="0.05" 
+                    height="0.3"
+                    position="0 -0.5 0"
+                ></a-cylinder>
+            </a-entity>
+        </a-scene>
+    </div>
+    
+    <!-- 顶部导航 -->
+    <div class="top-bar">
+        <button class="nav-btn" onclick="goBack()">
+            <span>←</span>
+            <span>返回</span>
+        </button>
+        <h1>🏮 阊门AR导览</h1>
+        <div class="status-item">
+            <span class="status-icon" id="gps-icon">📍</span>
+            <span id="gps-status">定位中</span>
+        </div>
+    </div>
+    
+    <!-- 距离显示 -->
+    <div class="distance-info">
+        <div class="distance-label">最近景点</div>
+        <div class="distance-value" id="nearest-distance">-</div>
+    </div>
+    
+    <!-- 语音控制 -->
+    <div class="voice-control">
+        <button 
+            class="voice-btn active" 
+            id="voice-toggle"
+            onclick="toggleVoice()"
+            title="语音解说"
+        >
+            🔊
+        </button>
+        <button 
+            class="voice-btn inactive" 
+            id="voice-stop"
+            onclick="stopVoice()"
+            title="停止播放"
+        >
+            ⏹️
+        </button>
+    </div>
+    
+    <!-- 底部状态栏 -->
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-icon">🎧</span>
+            <span id="voice-status">语音: 开启</span>
+        </div>
+        <div class="status-item">
+            <span class="status-icon">📡</span>
+            <span id="accuracy-status">精度: -</span>
+        </div>
+    </div>
+    
+    <!-- 景点介绍弹窗 -->
+    <div id="modal-overlay" class="modal-overlay"></div>
+    <div id="spot-modal" class="spot-modal">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modal-title">景点介绍</h3>
+            <button class="close-btn" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-image" id="modal-image">
+            <img src="" alt="景点图片">
+        </div>
+        <p class="modal-desc" id="modal-desc"></p>
+        <div class="modal-actions">
+            <button class="modal-btn" onclick="closeModal()">知道了</button>
+            <button class="modal-btn primary" onclick="repeatVoice()">重复播放</button>
+        </div>
+    </div>
+    
+    <script>
+        // ==============================================
+        // 景点数据配置
+        // ==============================================
+        const spotsData = [
+            {
+                id: 0,
+                name: '阊门城楼',
+                lat: 31.3222,
+                lng: 120.6292,
+                description: '阊门是苏州古城的西门，始建于春秋时期，是苏州城的重要门户。这里曾是明清时期最繁华的商业区，有"金阊门"之称。城楼气势恢宏，飞檐翘角，是苏州古城的标志性建筑之一。',
+                image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20Changmen%20ancient%20city%20gate%20traditional%20Chinese%20architecture&image_size=landscape_16_9'
+            },
+            {
+                id: 1,
+                name: '阊门广场',
+                lat: 31.3230,
+                lng: 120.6285,
+                description: '阊门广场位于阊门城楼前方，是游客聚集的重要场所。广场上有古运河码头，可乘坐游船游览运河美景，感受江南水乡的独特韵味。广场周边还有各种特色小吃和纪念品商店。',
+                image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20city%20square%20traditional%20Chinese%20architecture%20canal&image_size=landscape_16_9'
+            },
+            {
+                id: 2,
+                name: '运河码头',
+                lat: 31.3215,
+                lng: 120.6300,
+                description: '运河码头是欣赏京杭大运河风光的最佳地点。这里可以看到古老的运河水脉，感受千年运河的历史变迁。游客可以在这里乘坐仿古游船，体验江南水乡的诗情画意。',
+                image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Suzhou%20canal%20dock%20traditional%20Chinese%20boats%20riverside&image_size=landscape_16_9'
+            },
+            {
+                id: 3,
+                name: '古戏台遗址',
+                lat: 31.3218,
+                lng: 120.6280,
+                description: '古戏台遗址是阊门历史文化的重要见证。这里曾是明清时期戏曲表演的重要场所，昆曲、评弹等传统艺术在这里发扬光大。如今这里成为了展示苏州传统文化的重要景点。',
+                image: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=ancient%20Chinese%20theater%20stage%20traditional%20architecture%20Suzhou&image_size=landscape_16_9'
+            }
+        ];
+        
+        // ==============================================
+        // 全局变量
+        // ==============================================
+        let voiceEnabled = true;           // 语音开关
+        let currentUserLocation = null;    // 当前用户位置
+        let lastNotifiedSpot = null;       // 上次通知的景点
+        let currentSpeakingUtterance = null; // 当前语音播报对象
+        let guideStarted = false;          // 导览是否已开始
+        
+        // ==============================================
+        // 距离计算函数 (Haversine公式)
+        // ==============================================
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // 地球半径(米)
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // 返回距离(米)
+        }
+        
+        // ==============================================
+        // 获取最近景点
+        // ==============================================
+        function getNearestSpot() {
+            if (!currentUserLocation) return null;
+            
+            let nearest = null;
+            let minDistance = Infinity;
+            
+            for (const spot of spotsData) {
+                const distance = calculateDistance(
+                    currentUserLocation.lat,
+                    currentUserLocation.lng,
+                    spot.lat,
+                    spot.lng
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearest = spot;
+                }
+            }
+            
+            return { spot: nearest, distance: minDistance };
+        }
+        
+        // ==============================================
+        // 更新距离显示
+        // ==============================================
+        function updateDistanceDisplay() {
+            const result = getNearestSpot();
+            if (result) {
+                const distance = Math.round(result.distance);
+                if (distance < 1000) {
+                    document.getElementById('nearest-distance').textContent = `${distance}m`;
+                } else {
+                    document.getElementById('nearest-distance').textContent = `${(distance / 1000).toFixed(1)}km`;
+                }
+            }
+        }
+        
+        // ==============================================
+        // 检查附近景点并触发通知
+        // ==============================================
+        function checkNearbySpots() {
+            const result = getNearestSpot();
+            if (!result || !result.spot) return;
+            
+            const { spot, distance } = result;
+            
+            // 如果进入100米范围内且不是上次通知的景点
+            if (distance <= 100 && lastNotifiedSpot !== spot.id) {
+                lastNotifiedSpot = spot.id;
+                showSpotModal(spot);
+                
+                // 如果语音开启，自动朗读
+                if (voiceEnabled) {
+                    speakText(`欢迎来到${spot.name}。${spot.description}`);
+                }
+            }
+        }
+        
+        // ==============================================
+        // 显示景点介绍弹窗
+        // ==============================================
+        function showSpotModal(spot) {
+            document.getElementById('modal-title').textContent = spot.name;
+            document.getElementById('modal-desc').textContent = spot.description;
+            document.getElementById('modal-image').querySelector('img').src = spot.image;
+            
+            document.getElementById('modal-overlay').classList.add('active');
+            document.getElementById('spot-modal').classList.add('active');
+        }
+        
+        // ==============================================
+        // 关闭弹窗
+        // ==============================================
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('active');
+            document.getElementById('spot-modal').classList.remove('active');
+        }
+        
+        // ==============================================
+        // 语音合成函数
+        // ==============================================
+        function speakText(text) {
+            // 检查浏览器是否支持语音合成
+            if (!('speechSynthesis' in window)) {
+                console.warn('您的浏览器不支持语音合成');
+                return;
+            }
+            
+            // 停止当前播放
+            stopVoice();
+            
+            // 创建语音对象
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN';      // 中文语言
+            utterance.rate = 0.9;           // 语速
+            utterance.pitch = 1;            // 音调
+            utterance.volume = 1;           // 音量
+            
+            // 保存当前语音对象
+            currentSpeakingUtterance = utterance;
+            
+            // 开始播放
+            speechSynthesis.speak(utterance);
+            
+            // 更新按钮状态
+            document.getElementById('voice-stop').classList.remove('inactive');
+            document.getElementById('voice-stop').classList.add('active');
+        }
+        
+        // ==============================================
+        // 停止语音播放
+        // ==============================================
+        function stopVoice() {
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+                currentSpeakingUtterance = null;
+            }
+            
+            // 更新按钮状态
+            document.getElementById('voice-stop').classList.remove('active');
+            document.getElementById('voice-stop').classList.add('inactive');
+        }
+        
+        // ==============================================
+        // 重复播放当前景点介绍
+        // ==============================================
+        function repeatVoice() {
+            const result = getNearestSpot();
+            if (result && result.spot && voiceEnabled) {
+                const spot = result.spot;
+                speakText(`欢迎来到${spot.name}。${spot.description}`);
+            }
+            closeModal();
+        }
+        
+        // ==============================================
+        // 切换语音开关
+        // ==============================================
+        function toggleVoice() {
+            voiceEnabled = !voiceEnabled;
+            
+            const toggleBtn = document.getElementById('voice-toggle');
+            const statusText = document.getElementById('voice-status');
+            
+            if (voiceEnabled) {
+                toggleBtn.classList.remove('inactive');
+                toggleBtn.classList.add('active');
+                toggleBtn.innerHTML = '🔊';
+                statusText.textContent = '语音: 开启';
+                speakText('语音解说已开启');
+            } else {
+                toggleBtn.classList.remove('active');
+                toggleBtn.classList.add('inactive');
+                toggleBtn.innerHTML = '🔇';
+                statusText.textContent = '语音: 关闭';
+                stopVoice();
+            }
+        }
+        
+        // ==============================================
+        // GPS位置更新处理
+        // ==============================================
+        function onLocationUpdate(position) {
+            currentUserLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            
+            // 更新GPS状态显示
+            const accuracy = Math.round(position.coords.accuracy);
+            document.getElementById('gps-status').textContent = '定位成功';
+            document.getElementById('accuracy-status').textContent = `精度: ${accuracy}m`;
+            document.getElementById('gps-icon').textContent = '✅';
+            
+            // 更新距离显示
+            updateDistanceDisplay();
+            
+            // 检查附近景点
+            checkNearbySpots();
+            
+            // 如果是首次定位成功，隐藏加载提示
+            if (!guideStarted) {
+                guideStarted = true;
+                setTimeout(() => {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    speakText('欢迎使用阊门AR导览系统，请跟随蓝色箭头游览各个景点。');
+                }, 1000);
+            }
+        }
+        
+        // ==============================================
+        // GPS定位错误处理
+        // ==============================================
+        function onLocationError(error) {
+            console.error('GPS定位错误:', error);
+            
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    document.getElementById('gps-status').textContent = '请开启定位权限';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    document.getElementById('gps-status').textContent = '无法获取位置';
+                    break;
+                case error.TIMEOUT:
+                    document.getElementById('gps-status').textContent = '定位超时';
+                    break;
+                default:
+                    document.getElementById('gps-status').textContent = '定位失败';
+            }
+            
+            document.getElementById('gps-icon').textContent = '❌';
+            
+            // 隐藏加载提示
+            setTimeout(() => {
+                document.getElementById('loading-overlay').style.display = 'none';
+            }, 2000);
+        }
+        
+        // ==============================================
+        // 返回首页
+        // ==============================================
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+        
+        // ==============================================
+        // 页面加载完成后初始化
+        // ==============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // 开始GPS定位
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    onLocationUpdate,
+                    onLocationError,
+                    {
+                        enableHighAccuracy: true,  // 高精度模式
+                        timeout: 15000,            // 超时时间15秒
+                        maximumAge: 5000           // 缓存时间5秒
+                    }
+                );
+            } else {
+                document.getElementById('gps-status').textContent = '浏览器不支持定位';
+                document.getElementById('loading-overlay').style.display = 'none';
+            }
+            
+            // 点击弹窗遮罩关闭弹窗
+            document.getElementById('modal-overlay').addEventListener('click', closeModal);
+            
+            // 更新导航箭头
+            updateNavigationArrow();
+        });
+        
+        // ==============================================
+        // 更新导航箭头方向
+        // ==============================================
+        function updateNavigationArrow() {
+            // 获取A-Frame场景
+            const scene = document.querySelector('a-scene');
+            if (!scene) return;
+            
+            // 定期更新箭头指向最近景点
+            setInterval(() => {
+                if (!currentUserLocation) return;
+                
+                const result = getNearestSpot();
+                if (!result || !result.spot) return;
+                
+                const spot = result.spot;
+                
+                // 计算方向角（简化版本）
+                const dx = spot.lng - currentUserLocation.lng;
+                const dy = spot.lat - currentUserLocation.lat;
+                const angle = Math.atan2(dx, dy) * 180 / Math.PI;
+                
+                // 更新箭头位置（跟随用户）和方向
+                const arrow = document.getElementById('nav-arrow');
+                if (arrow) {
+                    // 设置箭头在用户前方1米处
+                    arrow.setAttribute('position', `0 0 -1`);
+                    arrow.setAttribute('rotation', `0 ${angle} 0`);
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
